@@ -2,6 +2,9 @@
 
 int main(){
 
+    // -------------------------------------------------------------------------------
+    // -------------------------------------------------------------------------------
+    // Testing that MD4 functions correctly when hashing simple data
     /*
     // Alice computes original MAC
     unsigned char text[77] = "comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon";
@@ -34,6 +37,11 @@ int main(){
     unsigned char hash4[16];
     MD4WithStartingRegisters(hash4,"",0,reg1,reg2,reg3,reg4,totalBytesProcessed);
     */
+
+    // -------------------------------------------------------------------------------
+    // -------------------------------------------------------------------------------
+    // Testing that MD4WithStartingRegisters starts where the previous hashing was left correctly
+    /*
     // 1. Get the base hash
     unsigned char base_hash[16];
     unsigned char text[20] = "THISISAPLAINTEXT!!!!";
@@ -62,5 +70,36 @@ int main(){
     //unsigned char* full = [20 bytes text] + [44 bytes MD4 Padding] + ["HELLO"]
     unsigned char hashToCompare[16];
     MD4(hashToCompare,full,69); //should equal extended_hash
+    */
+
+    // Alice computes the original MAC
+    unsigned char text[78] = "comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon";
+    int textLength = 77;
+    unsigned char* originalMAC = getSecretPrefixMAC_MD4("THISISATESTKEY!!", 16, text, textLength);
+
+    // Attacker takes the originalMAC and resumes computation to create an extended message
+    uint32_t reg1 = (uint32_t)originalMAC[0] | ((uint32_t)originalMAC[1] << 8) | ((uint32_t)originalMAC[2] << 16) | ((uint32_t)originalMAC[3] << 24);
+    uint32_t reg2 = (uint32_t)originalMAC[4] | ((uint32_t)originalMAC[5] << 8) | ((uint32_t)originalMAC[6] << 16) | ((uint32_t)originalMAC[7] << 24);
+    uint32_t reg3 = (uint32_t)originalMAC[8] | ((uint32_t)originalMAC[9] << 8) | ((uint32_t)originalMAC[10] << 16) | ((uint32_t)originalMAC[11] << 24);
+    uint32_t reg4 = (uint32_t)originalMAC[12] | ((uint32_t)originalMAC[13] << 8) | ((uint32_t)originalMAC[14] << 16) | ((uint32_t)originalMAC[15] << 24);
+
+    
+    int keylength = 16;
+    int gluePaddingLength = -1;
+    unsigned char* gluePadding = getGluePadding(text, textLength, keylength, &gluePaddingLength);
+    int bytesProcessed = keylength + textLength + gluePaddingLength;
+
+    unsigned char alteredMAC[16];
+    MD4WithStartingRegisters(alteredMAC,";admin=true",11,reg1,reg2,reg3,reg4,bytesProcessed);
+
+    int totalLength = textLength + gluePaddingLength + 11;
+    // alteredMessage = "comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon" + gluePadding + ";admin=true"
+    unsigned char* alteredMessage = malloc(totalLength);
+    memcpy(alteredMessage, text, textLength);
+    memcpy(alteredMessage + textLength, gluePadding, gluePaddingLength);
+    memcpy(alteredMessage + textLength + gluePaddingLength, ";admin=true", 11);
+
+    bool authenticationStatus = authenticate("THISISATESTKEY!!",16,alteredMessage,totalLength,alteredMAC);
+
     return 0;
 }
