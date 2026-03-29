@@ -295,10 +295,9 @@ void MD4WithStartingRegisters(
 	ctx.b = b;
 	ctx.c = c;
 	ctx.d = d;
-	// 2. Set the bit count correctly
-    MD4_u32plus totalBits = totalBytesProcessed * 8;
-    ctx.lo = (uint32_t)(totalBits & 0xFFFFFFFF);
-    ctx.hi = (uint32_t)(totalBits >> 32);
+	
+    ctx.lo = totalBytesProcessed;
+    ctx.hi = 0;
 
     for (ii=0; ii<len; ii+=1)
         MD4_Update(&ctx, (const unsigned char*)str + ii, 1);
